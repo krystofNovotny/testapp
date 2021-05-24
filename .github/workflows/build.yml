@@ -1,0 +1,37 @@
+name: Build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java: [8, 11]
+    name: "Java ${{ matrix.java }} build"
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK
+        uses: actions/setup-java@v1
+        with:
+          java-version: ${{ matrix.java }}
+      - name: Cache Maven packages
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+      - name: Install expect
+        run: sudo apt install expect
+      - name: Run the Maven install phase
+        run: mvn -B install --file pom.xml
+      - name: Check the run
+        run: expect -f ex > log
+      - name: Upload log
+        uses: actions/upload-artifact@v2
+        with:
+          name: log
+          path: log
+      - name: Verify log
+        run: test \!`grep -Eq 'ERROR|WARNING' log`
+      
